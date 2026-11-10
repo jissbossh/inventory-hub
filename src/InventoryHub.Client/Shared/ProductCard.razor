@@ -1,0 +1,22 @@
+@inject IProductApiClient Api
+@inject NavigationManager Nav
+
+<div class="card @(Product.Stock == 0 ? "card--empty" : "")">
+    <h3>@Product.Name</h3>
+    <p class="sku">@Product.Sku · @Product.CategoryName</p>
+    <p class="price">@Product.Price.ToString("C")</p>
+    <p class="stock">Stock: @Product.Stock</p>
+    <div class="actions">
+        <button @onclick="() => Nav.NavigateTo($"/products/{Product.Id}")">Details</button>
+        <button disabled="@(Product.Stock == 0)" @onclick="Restock">+10 stock</button>
+    </div>
+</div>
+
+@code {
+    [Parameter] public ProductDto Product { get; set; } = default!;
+    private async Task Restock()
+    {
+        await Api.UpdateStockAsync(Product.Id, 10, "Restock via UI");
+        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+    }
+}

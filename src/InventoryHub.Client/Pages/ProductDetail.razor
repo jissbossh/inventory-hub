@@ -1,0 +1,25 @@
+@page "/products/{Id:int}"
+@inject IProductApiClient Api
+
+@if (_product is null)
+{
+    <p>Loading…</p>
+}
+else
+{
+    <h1>@_product.Name</h1>
+    <p>@_product.Sku — @_product.CategoryName</p>
+    <p>Price: @_product.Price.ToString("C")</p>
+    <p>Stock: @_product.Stock</p>
+    <p>Updated: @_product.UpdatedUtc.ToLocalTime()</p>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+    private ProductDto? _product;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _product = await Api.GetProductAsync(Id);
+    }
+}

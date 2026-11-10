@@ -1,0 +1,94 @@
+@page "/products"
+@inject IProductApiClient Api
+@inject AppState State
+@implements IDisposable
+
+<h1>Inventory</h1>
+
+<div class="toolbar">
+    <input @bind="_search" @bind:event="oninput" placeholder="Search…" />
+    <select @bind="_categoryId">
+        <option value="">All categories</option>
+        @foreach (var c in _categories)
+        {
+            <option value="@c.Id">@c.Name</option>
+        }
+    </select>
+    <button @onclick="LoadAsync">Apply</button>
+</div>
+
+@if (_loading)
+{
+    <p>Loading products…</p>
+}
+else if (_result is null)
+{
+    <p class="error">No data available.</p>
+}
+else
+{
+    <div class="grid">
+        @foreach (var p in _result.Items)
+        {
+            <ProductCard Product="p" />
+        }
+    </div>
+
+    <div class="pager">
+        <button disabled="@(_result.Page <= 1)" @onclick="PrevPage">Prev</button>
+        <span>Page @_result.Page / @_result.TotalPages</span>
+        <button disabled="@(_result.Page >= _result.TotalPages)" @onclick="NextPage">Next</button>
+    </div>
+}
+
+@code {
+    private bool _loading;
+    private PagedResult<ProductDto>? _result;
+    private List<CategoryDto> _categories = new();
+    private string? _search;
+    private int? _categoryId;
+    private int _page = 1;
+    private const int PageSize = 6;
+    private CancellationTokenSource? _cts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categories = await Api.GetCategoriesAsync() ?? new();
+        State.OnChange += OnStateChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _cts?.Cancel();
+        _cts = new CancellationTokenSource();
+        _loading = true;
+        State.NotifyStateChanged();
+        try
+        {
+            _result = await Api.GetProductsAsync(_page, PageSize, _search, _categoryId, _cts.Token);
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task PrevPage()
+    {
+        if (_result is null) return;
+        _page = Math.Max(1, _page - 1);
+        await LoadAsync();
+    }
+
+    private async Task NextPage()
+    {
+        if (_result is null) return;
+        _page++;
+        await LoadAsync();
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    public void Dispose() => State.OnChange -= OnStateChanged;
+}
